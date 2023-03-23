@@ -18,7 +18,7 @@ model Post {
 
     content String @db.VarChar(255)
 
-    autthorId String
+    authorId String
 
-    @@index([autthorId])
+    @@index([authorId])
 }
