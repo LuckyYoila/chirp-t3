@@ -9,6 +9,17 @@ import {
   privateProcedure,
 } from "~/server/api/trpc";
 import { TRPCError } from "@trpc/server";
+import { Ratelimit } from "@upstash/ratelimit"; // for deno: see above
+import { Redis } from "@upstash/redis";
+
+
+// rate limit for 3 mutations per 1 minute
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(3, "1 m"),
+  analytics: true
+});
+
 
 const filterForClient = (user: User) => {
   return {
@@ -61,6 +72,9 @@ export const postsRouter = createTRPCRouter({
     .mutation(async ({ ctx, input }) => {
       const authorId = ctx.userId;
 
+      const {success} = await ratelimit.limit(authorId)
+
+      if (!success) throw new TRPCError({ code: "TOO_MANY_REQUESTS"})
       const post = await ctx.prisma.post.create({
         data: {
           authorId,
