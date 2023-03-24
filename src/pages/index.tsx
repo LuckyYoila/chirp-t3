@@ -9,10 +9,10 @@ import { api } from "~/utils/api";
 
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-
-dayjs.extend(relativeTime)
+import { LoadingPage } from "~/components/Loading";
 
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
+dayjs.extend(relativeTime);
 
 const CreatePostWizard = () => {
   const { user } = useUser();
@@ -24,7 +24,6 @@ const CreatePostWizard = () => {
         src={user.profileImageUrl}
         alt="Profile Image"
         className="h-14 w-14 rounded-full"
-
         width={100}
         height={100}
       />
@@ -46,17 +45,35 @@ const PostView = (props: PostWithUser) => {
         src={author.profilePicture}
         alt="author profile pic"
         className="h-14 w-14 rounded-full"
-
         width={100}
         height={100}
       />
 
       <div className="flex flex-col">
-      <div className="">
-         <span>{`@${author.username}`} </span> . <span className="text-xs">{`${dayjs(post.createdAt).fromNow()}`}</span>
+        <div className="">
+          <span>{`@${author.username}`} </span> .{" "}
+          <span className="text-xs">{`${dayjs(
+            post.createdAt
+          ).fromNow()}`}</span>
+        </div>
+        <span>{post.content}</span>
       </div>
-      <span>{post.content}</span>
-      </div>
+    </div>
+  );
+};
+
+const Feed = () => {
+  const { data, isLoading: postsLoading } = api.posts.getAll.useQuery();
+
+  if (postsLoading) return <LoadingPage />
+
+  if (!data) return <div>Something went wrong</div>;
+
+  return (
+    <div className="flex flex-col">
+      {data.map((fullpost) => {
+        return <PostView key={fullpost.post.id} {...fullpost} />;
+      })}
     </div>
   );
 };
@@ -64,21 +81,26 @@ const PostView = (props: PostWithUser) => {
 const Home: NextPage = () => {
   // const hello = api.posts.hello.useQuery({ text: "from tRPC" });
 
-  const user = useUser();
+  const { isLoaded: userLoaded, isSignedIn } = useUser();
 
-  const { data, isLoading } = api.posts.getAll.useQuery();
+  // start fetching ASAP
+ api.posts.getAll.useQuery();
 
-  if (!data || isLoading)
-    return (
-      <div className="grid h-screen w-full place-items-center">Loading...</div>
-    );
+  // return empty div if user is not loaded
 
-  if (!data)
-    return (
-      <div className="grid h-screen w-full place-items-center">
-        Something went wrong!
-      </div>
-    );
+  if (!userLoaded) return <div />;
+
+  // if (!data || isLoading)
+  //   return (
+  //     <div className="grid h-screen w-full place-items-center"><LoadingPage /></div>
+  //   );
+
+  // if (!data)
+  //   return (
+  //     <div className="grid h-screen w-full place-items-center">
+  //       Something went wrong!
+  //     </div>
+  //   );
 
   return (
     <>
@@ -90,16 +112,12 @@ const Home: NextPage = () => {
       <main className=" flex justify-center ">
         <div className=" h-screen w-full border-x border-x-slate-100 md:max-w-2xl ">
           <div className="border-b border-slate-400 p-4">
-            {user.isSignedIn ? <CreatePostWizard /> : null}
-            {/* {!user.isSignedIn ? <SignInButton /> : <SignOutButton />} */}
+            {/* {!isSignedIn ? <SignInButton /> : <SignOutButton />} */}
+            {isSignedIn ? <CreatePostWizard /> : null}
           </div>
           {/* <SignIn path="/sign-in" routing="path" signUpUrl="/sign-up" /> */}
 
-          <div className="flex flex-col">
-            {data.map((fullpost) => {
-              return <PostView key={fullpost.post.id} {...fullpost} />;
-            })}
-          </div>
+          <Feed />
         </div>
       </main>
     </>
