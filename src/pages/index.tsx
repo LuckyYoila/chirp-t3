@@ -12,10 +12,26 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import { LoadingPage } from "~/components/Loading";
 
 import { SignInButton, SignOutButton, useUser } from "@clerk/nextjs";
+import { useState } from "react";
 dayjs.extend(relativeTime);
 
 const CreatePostWizard = () => {
   const { user } = useUser();
+
+  const [input, setInput]= useState("")
+
+  const ctx = api.useContext();
+
+  const {mutate, isLoading: createPostLoading}= api.posts.create.useMutation(
+    {
+      onSuccess: ()=> {
+        setInput("");
+        void ctx.posts.getAll.invalidate()
+      }
+    }
+  );
+
+
 
   if (!user) return null;
   return (
@@ -30,7 +46,13 @@ const CreatePostWizard = () => {
       <input
         placeholder="Type some emojis"
         className="w-full bg-transparent p-3 outline-none"
+        type="text"
+        value={input}
+        onChange={(e)=> setInput(e.target.value)}
+        disabled={createPostLoading}
       />
+
+      <button type="submit" onClick={()=> mutate({content: input})} disabled={createPostLoading} >Post</button>
     </div>
   );
 };
@@ -56,7 +78,7 @@ const PostView = (props: PostWithUser) => {
             post.createdAt
           ).fromNow()}`}</span>
         </div>
-        <span>{post.content}</span>
+        <span className=" text-lg">{post.content}</span>
       </div>
     </div>
   );
@@ -87,20 +109,7 @@ const Home: NextPage = () => {
  api.posts.getAll.useQuery();
 
   // return empty div if user is not loaded
-
   if (!userLoaded) return <div />;
-
-  // if (!data || isLoading)
-  //   return (
-  //     <div className="grid h-screen w-full place-items-center"><LoadingPage /></div>
-  //   );
-
-  // if (!data)
-  //   return (
-  //     <div className="grid h-screen w-full place-items-center">
-  //       Something went wrong!
-  //     </div>
-  //   );
 
   return (
     <>
